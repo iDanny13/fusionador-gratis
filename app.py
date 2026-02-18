@@ -1,53 +1,51 @@
 import streamlit as st
-import urllib.parse
-import random
-import time
+from huggingface_hub import InferenceClient
+from PIL import Image
+import io
 
 # Configuración
-st.set_page_config(page_title="Fusionador V3 (Lite)", page_icon="⚡")
+st.set_page_config(page_title="Fusionador PRO", page_icon="🧬")
 
-st.title("⚡ Fusionador V3 (Modo Rápido)")
-st.write("Si los servidores están llenos, esta versión intenta colarse más rápido.")
+st.title("🧬 Fusionador PRO (Hugging Face)")
+st.write("Usando el modelo Stable Diffusion XL (Gratis)")
+
+# Verificar el Token
+if "HF_TOKEN" not in st.secrets:
+    st.error("⚠️ FALTA EL TOKEN. Configúralo en los 'Secrets' de Streamlit.")
+    st.stop()
+
+# Conexión con la IA
+client = InferenceClient(token=st.secrets["HF_TOKEN"])
 
 # Entradas
 col1, col2 = st.columns(2)
 with col1:
-    p1 = st.text_input("Personaje 1", "Shrek")
+    p1 = st.text_input("Personaje 1", "Iron Man")
 with col2:
-    p2 = st.text_input("Personaje 2", "Batman")
+    p2 = st.text_input("Personaje 2", "Pikachu")
 
 # Botón
 if st.button("¡FUSIONAR AHORA!"):
     if not p1 or not p2:
-        st.warning("Escribe ambos nombres.")
+        st.warning("Escribe los dos nombres.")
     else:
-        st.info("Contactando con el servidor... (Cruzando los dedos 🤞)")
-        
-        # 1. Prompt SIMPLIFICADO (Menos texto = Menos error)
-        # Quitamos palabras como "8k", "cinematic" que a veces bloquean
-        prompt = f"fusion of {p1} and {p2}, hybrid character, visual mix"
-        
-        # 2. Limpieza segura del texto
-        prompt_seguro = urllib.parse.quote(prompt)
-        
-        # 3. Semilla aleatoria
-        semilla = random.randint(0, 999999)
-        
-        # 4. URL MODIFICADA (EL TRUCO ESTÁ AQUÍ)
-        # Quitamos 'model=flux' y 'width/height'. Usamos el modelo por defecto que es más estable.
-        url_imagen = f"https://image.pollinations.ai/prompt/{prompt_seguro}?seed={semilla}&nologo=true"
-        
-        # Pequeña pausa para dar tiempo a procesar
-        time.sleep(1)
-        
         try:
-            # Mostramos la imagen
-            st.image(url_imagen, caption=f"Fusión: {p1} + {p2}")
-            st.success("¡Éxito!")
-        except:
-            st.error("El servidor sigue ocupado.")
-
-        # Enlace de respaldo por si la imagen no carga en la web
-        st.markdown("---")
-        st.markdown(f"👇 **Si la imagen de arriba no carga, toca este enlace azul:**")
-        st.markdown(f"[>> ABRIR IMAGEN EN PESTAÑA NUEVA <<]({url_imagen})")
+            with st.spinner('🎨 La IA está pintando... (tarda unos 10-15 seg)'):
+                
+                # Creamos el prompt en inglés automáticamente
+                prompt = f"Hybrid fusion character of {p1} and {p2}, full body, cinematic lighting, 8k, highly detailed, fantasy style, masterpiece."
+                
+                # Pedimos la imagen al modelo 'stabilityai/stable-diffusion-xl-base-1.0'
+                # Este es uno de los mejores modelos gratuitos del mundo
+                image = client.text_to_image(
+                    prompt, 
+                    model="stabilityai/stable-diffusion-xl-base-1.0"
+                )
+                
+                # Mostrar resultado
+                st.success("¡Imagen generada!")
+                st.image(image, caption=f"Fusión: {p1} + {p2}")
+                
+        except Exception as e:
+            st.error(f"Hubo un error: {e}")
+            st.info("Si dice 'Rate limit', espera 2 minutos y prueba otra vez.")
